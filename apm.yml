@@ -1,5 +1,5 @@
 name: agent-skills
-version: 0.1.0
+version: 0.2.0
 description: Project-agnostic VCS/GitHub workflow skills for Claude Code (commit, create-pr, create-issue, debug-ci)
 author: kkohtaka
 # Which agent platforms to deploy to.
