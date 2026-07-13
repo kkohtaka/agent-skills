@@ -2,7 +2,7 @@
 name: commit
 description: Create one or more incremental conventional commits on a properly named branch, without pushing or opening a PR
 argument-hint: "[commit-scope-hint]"
-disable-model-invocation: true
+disable-model-invocation: false
 allowed-tools: Bash(git *) Bash(gh *)
 ---
 
