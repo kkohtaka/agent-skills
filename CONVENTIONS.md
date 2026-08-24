@@ -68,7 +68,9 @@ Gather the state the skill needs using `!`-inlined command blocks:
 
 List only the tools the skill actually uses, scoped as narrowly as possible.
 If a skill needs to write files it relies on the `Write`/`Edit` tools; declare
-them explicitly rather than shelling out.
+them explicitly rather than shelling out. A skill that talks to an MCP server
+grants it by server name (`mcp__github`); see §4.9 for the caveat that comes
+with that.
 
 ### 4.2 Model invocation (`disable-model-invocation`)
 
@@ -100,7 +102,9 @@ These skills deploy into repositories with unknown stacks. A skill in this
 package MUST NOT assume:
 
 - a specific default branch name (`master`/`main`) — resolve it dynamically
-  from `origin/HEAD` or `gh repo view`;
+  from `origin/HEAD`, falling back to `git ls-remote --symref origin HEAD`
+  (which works in a fresh clone where `origin/HEAD` is unset, and needs no
+  GitHub CLI);
 - a specific build system, linter, formatter, or test runner — formatting and
   quality fixes are the consumer repository's concern, never a step here;
 - the presence of project files beyond git/GitHub itself — probe with
@@ -122,6 +126,41 @@ Skill Markdown (`SKILL.md`) is written in **English**. Artifacts a skill
 produces (issues, PRs, commits) follow the convention documented in that
 skill — GitHub-facing text is English.
 
+### 4.9 Dual-environment support (`gh` may be absent)
+
+These skills run in two kinds of environment, and both are first-class:
+
+| Environment | GitHub transport |
+| --- | --- |
+| Local checkout / devcontainer | the `gh` CLI |
+| Claude Code on the web (cloud session) | the GitHub MCP server |
+
+`git` itself — including `push` — works in both, so anything a skill can do
+with plain `git` needs no branching at all. Only the GitHub API calls do.
+A skill that depends on a tool which may be missing MUST:
+
+1. **Probe, do not guess.** Detect the route with a read-only check
+   (`command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1`) rather
+   than inferring the environment from anything else.
+2. **Guard every `## Context` command** that could be unavailable, so the skill
+   loads with a usable message instead of a command error. Context runs on every
+   load, before the model can decide anything (§3).
+3. **Keep the judgement in one place.** Only the fetch/write route differs
+   between environments — the analysis, the drafting, and the confirmation gates
+   (§4.3) are written once and are identical on both routes. Do not fork a step
+   into two near-duplicate steps when only the command differs.
+4. **Fail loudly when neither route is available.** Say which routes were tried
+   and stop; never silently skip the step or report it as done (§4.6).
+
+Each route MUST state which environment it is for, so a reader is not left
+wondering why there are two.
+
+**MCP server names are not stable identifiers.** They derive from the
+connector's display name, so an `allowed-tools` grant written against a name
+breaks silently if the connector is renamed. The GitHub server is observed as
+`github` (granted as `mcp__github`); a skill referring to it should say so and
+note that the tool names are the same under any server name.
+
 ## 5. Authoring checklist
 
 Before considering a skill done, verify:
@@ -131,5 +170,9 @@ Before considering a skill done, verify:
 - [ ] `disable-model-invocation` set per §4.2.
 - [ ] Confirmation gates present for any outward/irreversible action (§4.3).
 - [ ] No project-specific assumptions (§4.5).
+- [ ] Dual-environment rule followed (§4.9): the route is probed, `## Context`
+      is guarded, the judgement is not duplicated per route, each route says
+      which environment it is for, and a missing route fails loudly.
+- [ ] `allowed-tools` grants every MCP server the skill now uses (§4.1, §4.9).
 - [ ] `apm audit` is clean and `apm install --dry-run --target claude` deploys it.
 - [ ] Verified by manual invocation in at least one consumer repository.

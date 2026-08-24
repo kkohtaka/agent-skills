@@ -16,6 +16,22 @@ All skills resolve the repository's default branch dynamically and assume
 nothing about the build system — they work in any git/GitHub repository.
 Authoring rules live in [CONVENTIONS.md](CONVENTIONS.md).
 
+### Environments
+
+Each skill works both in a local checkout and in a Claude Code cloud session,
+which has no `gh` CLI:
+
+- `commit` uses plain `git` only, so it needs no GitHub transport at all.
+- `create-pr`, `create-issue`, and `debug-ci` probe for `gh` at load time and
+  fall back to the **GitHub MCP server** (observed as `github`) when it is
+  absent. `git push` works in both environments, so only the GitHub API calls
+  differ. Each step names the call for both routes; if neither is available the
+  skill stops and says so rather than reporting the action as done.
+
+In a cloud session the GitHub connector must be enabled for the session —
+without it, the three GitHub-facing skills have no route. See
+[CONVENTIONS.md §4.9](CONVENTIONS.md) for the authoring rule behind this.
+
 ## Consuming
 
 Add the dependency to your repository's `apm.yml`:
@@ -25,7 +41,7 @@ targets:
   - claude
 dependencies:
   apm:
-    - kkohtaka/agent-skills#v0.1.0
+    - kkohtaka/agent-skills#v0.3.0
 ```
 
 Then install:
@@ -54,7 +70,7 @@ Releases are semver git tags (`vMAJOR.MINOR.PATCH`):
 - **MAJOR** — a skill is removed/renamed, or its arguments/behavior change
   incompatibly.
 
-Consumers pin an exact tag (`#v0.1.0`) and upgrade deliberately.
+Consumers pin an exact tag (`#v0.3.0`) and upgrade deliberately.
 
 ## Development
 
