@@ -3,7 +3,7 @@ name: create-issue
 description: File a well-structured GitHub issue for this repository using the repo's issue templates and existing labels
 argument-hint: "[short topic, optionally: sub-issue of #N]"
 disable-model-invocation: true
-allowed-tools: Bash(gh *) Bash(git *) Bash(sed *) Bash(grep *) Bash(cat *) Bash(ls *) Bash(command *) mcp__github
+allowed-tools: Bash(gh *) Bash(git *) Bash(sed *) Bash(grep *) Bash(cat *) Bash(ls *) Bash(command *) Bash(curl *) mcp__github
 ---
 
 # Create Issue
@@ -83,8 +83,21 @@ If the repository has no templates, use this structure:
 ### Step 3 — Choose labels
 
 If the Context label listing reported `(unavailable on this route)`, fetch the
-labels first with the GitHub MCP server's `list_label` tool (`owner`, `repo`
-from the Context repository line). Do not proceed with an unknown label set.
+label set before choosing. **The GitHub MCP server has no tool that enumerates a
+repository's labels** — `get_label` reads one label by exact name, and
+`issue_read` (`method: "get_labels"`) reads the labels of one issue; neither
+lists the repository's set. Use the REST endpoint directly, which a cloud
+session's egress proxy authenticates:
+
+```bash
+curl -s "https://api.github.com/repos/<owner>/<repo>/labels?per_page=100" \
+  | grep -E '^\s*"(name|description)":'
+```
+
+If that call fails too, stop and ask the user for the label names rather than
+inventing them. Whichever way you obtained the set, confirm each label you
+intend to apply with `get_label` before Step 6 — a label name the repository
+does not have makes the whole `issue_write` call fail.
 
 Pick labels **only from that label list**. Match on intent —
 e.g. an `enhancement`-like label for new capabilities, a `bug`-like label for
@@ -176,8 +189,21 @@ gh api --method POST "repos/$REPO/issues/<PARENT_NUMBER>/sub_issues" \
 **Route B — no `gh`** (Claude Code cloud session): call the GitHub MCP server's
 `sub_issue_write` tool with `method: "add"`, `owner`, `repo`,
 `issue_number` = the **parent** issue number, and `sub_issue_id` = the child's
-database id. Take that id from the `issue_write` response of Step 6, or read it
-back with `issue_read` (`method: "get"`) and use its `id` field.
+database id **as a number**.
+
+Getting that id is the awkward part on this route: `issue_read`
+(`method: "get"`) does **not** return an `id` field, and neither `list_issues`
+nor `search_issues` can select one, so if the `issue_write` response of Step 6
+does not carry a numeric `id`, no MCP tool will give it to you. Read it from
+REST instead:
+
+```bash
+curl -s "https://api.github.com/repos/<owner>/<repo>/issues/<CHILD_NUMBER>" \
+  | grep -m1 -E '^\s*"id":'
+```
+
+Pass that number — not the issue number, and not a `LA_…`/`I_…` GraphQL node
+id — as `sub_issue_id`.
 
 If the linking call fails on either route, say so and update the parent's task
 list instead, so the relationship is still tracked — and report that the

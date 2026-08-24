@@ -104,7 +104,11 @@ package MUST NOT assume:
 - a specific default branch name (`master`/`main`) — resolve it dynamically
   from `origin/HEAD`, falling back to `git ls-remote --symref origin HEAD`
   (which works in a fresh clone where `origin/HEAD` is unset, and needs no
-  GitHub CLI);
+  GitHub CLI). Resolving the *name* is not the same as having the *ref*: a
+  cloud session's clone fetches only the branches it needs, so
+  `refs/remotes/origin/<default>` frequently does not exist at load time.
+  Anything comparing against it must check with `git rev-parse --verify` and
+  say the ref is unfetched, rather than reporting an empty diff;
 - a specific build system, linter, formatter, or test runner — formatting and
   quality fixes are the consumer repository's concern, never a step here;
 - the presence of project files beyond git/GitHub itself — probe with
@@ -154,6 +158,14 @@ A skill that depends on a tool which may be missing MUST:
 
 Each route MUST state which environment it is for, so a reader is not left
 wondering why there are two.
+
+**Verify every MCP tool name and response field against a live session.** The
+server's surface is not a mirror of the CLI's, and a plausible name is often
+absent: the GitHub server has no tool that lists a repository's labels, and its
+`issue_read` response carries no numeric `id`. A route written from a guessed
+tool name fails at the moment it is needed. Where the MCP surface has no
+equivalent, fall back to the REST endpoint over `curl` — a cloud session's
+egress proxy authenticates `api.github.com` requests — and grant `Bash(curl *)`.
 
 **MCP server names are not stable identifiers.** They derive from the
 connector's display name, so an `allowed-tools` grant written against a name
