@@ -22,8 +22,13 @@ re-run, or push anything.
 **Repository (`owner/name`), resolved from the git remote:**
 
 ```
-!`git remote get-url origin 2>/dev/null | sed -E 's#^(git@|ssh://git@|https://)github\.com[:/]##; s#\.git$##' | grep . || echo "(no origin remote)"`
+!`command -v gh >/dev/null 2>&1 && gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || git remote get-url origin 2>/dev/null | sed -E 's#^[a-zA-Z+]+://##; s#^[^/:]*[:/]##; s#\.git$##' | grep -E '^[^/]+/[^/]+$' || echo "(unresolved — pass owner/repo explicitly)"`
 ```
+
+> On route A this is `gh repo view`, exactly as before. The route-B fallback
+> parses the remote URL and is host-agnostic (it works for GitHub Enterprise
+> too); it validates the result against `owner/repo` so a remote it cannot parse
+> reports `(unresolved)` instead of a plausible-looking wrong value.
 
 **Current branch:**
 
@@ -89,6 +94,10 @@ Determine what to investigate from `$ARGUMENTS` and the Context above:
   ```bash
   gh pr checks <pr-number>
   ```
+  ```bash
+  gh run list --limit 10 --json databaseId,name,status,conclusion,headBranch \
+    --jq '.[] | "\(.databaseId)  \(.name)  \(.status)  \(.conclusion)"'
+  ```
 - Route B: call `pull_request_read` **twice** — once with
   `method: "get_check_runs"` and once with `method: "get_status"`, both with
   `pullNumber`. Both are required: a check reported as a *commit status* rather
@@ -149,7 +158,10 @@ look for the root cause.
   same error markers as route A.
 
 **Last resort — WebFetch** (public repositories only; it is unauthenticated and
-sees nothing in a private repo):
+sees nothing in a private repo). Note that on route A this is now the only
+fallback when the `gh --log` output comes back empty — the previous
+`GITHUB_TOKEN` log-archive download was removed because it obtained its token
+from `gh auth token` and so could never work on route B:
 
 ```
 WebFetch URL: https://github.com/<owner>/<repo>/actions/runs/<run-id>

@@ -19,8 +19,13 @@ Collect the information needed to write a good issue.
 
 **Repository (`owner/name`), resolved from the git remote:**
 ```
-!`git remote get-url origin 2>/dev/null | sed -E 's#^(git@|ssh://git@|https://)github\.com[:/]##; s#\.git$##' | grep . || echo "(no origin remote)"`
+!`command -v gh >/dev/null 2>&1 && gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || git remote get-url origin 2>/dev/null | sed -E 's#^[a-zA-Z+]+://##; s#^[^/:]*[:/]##; s#\.git$##' | grep -E '^[^/]+/[^/]+$' || echo "(unresolved — pass owner/repo explicitly)"`
 ```
+
+> On route A this is `gh repo view`, exactly as before. The route-B fallback
+> parses the remote URL and is host-agnostic (it works for GitHub Enterprise
+> too); it validates the result against `owner/repo` so a remote it cannot parse
+> reports `(unresolved)` instead of a plausible-looking wrong value.
 
 **Existing labels (use only these — do not invent new ones):**
 ```
@@ -160,7 +165,7 @@ field — not the issue number, and not the GraphQL node id).
 **Route A — `gh` CLI available** (local checkout / devcontainer):
 
 ```bash
-REPO=$(git remote get-url origin | sed -E 's#^(git@|ssh://git@|https://)github\.com[:/]##; s#\.git$##')
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 CHILD_DB_ID=$(gh issue view <NEW_ISSUE_NUMBER> --json id -q .databaseId 2>/dev/null \
   || gh api "repos/$REPO/issues/<NEW_ISSUE_NUMBER>" -q .id)
 
