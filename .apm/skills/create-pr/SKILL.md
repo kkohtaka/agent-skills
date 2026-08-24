@@ -49,12 +49,12 @@ Collect the information needed to create the PR.
 
 **Commits ahead of the remote default branch:**
 ```
-!`git log $(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || git ls-remote --symref origin HEAD 2>/dev/null | sed -n 's#^ref: refs/heads/\(.*\)[[:space:]]HEAD$#origin/\1#p')..HEAD --oneline 2>/dev/null || echo "(default branch unresolved — see above)"`
+!`D=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || git ls-remote --symref origin HEAD 2>/dev/null | sed -n 's#^ref: refs/heads/\(.*\)[[:space:]]HEAD$#origin/\1#p'); if [ -z "$D" ]; then echo "(default branch unresolved — see above)"; elif ! git rev-parse --verify --quiet "$D" >/dev/null 2>&1; then echo "($D is resolved but not fetched locally — run: git fetch origin, then re-run this comparison)"; else git log "$D"..HEAD --oneline; fi`
 ```
 
 **Full diff from the remote default branch:**
 ```
-!`git diff $(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || git ls-remote --symref origin HEAD 2>/dev/null | sed -n 's#^ref: refs/heads/\(.*\)[[:space:]]HEAD$#origin/\1#p')...HEAD 2>/dev/null || echo "(default branch unresolved — see above)"`
+!`D=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || git ls-remote --symref origin HEAD 2>/dev/null | sed -n 's#^ref: refs/heads/\(.*\)[[:space:]]HEAD$#origin/\1#p'); if [ -z "$D" ]; then echo "(default branch unresolved — see above)"; elif ! git rev-parse --verify --quiet "$D" >/dev/null 2>&1; then echo "($D is resolved but not fetched locally — run: git fetch origin, then re-run this comparison)"; else git diff "$D"...HEAD; fi`
 ```
 
 **Repository PR template (empty if the repo has none):**
@@ -67,6 +67,13 @@ Collect the information needed to create the PR.
 > both the commit list and the diff misleading. When the local `origin/HEAD` ref
 > is missing — the usual state of the fresh clone a cloud session starts from —
 > the fallback asks the remote with `git ls-remote --symref`.
+>
+> A cloud session's clone fetches only the branches that session needs, so the
+> default branch's remote-tracking ref (`origin/<default>`) often does not exist
+> locally at load time even though the *name* resolves. The two comparisons
+> above therefore check the ref exists and, when it does not, say so and name
+> the fix (`git fetch origin`, which Step 1 runs) instead of silently reporting
+> no commits and an empty diff.
 
 ## Your Task
 
