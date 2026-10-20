@@ -173,6 +173,20 @@ breaks silently if the connector is renamed. The GitHub server is observed as
 `github` (granted as `mcp__github`); a skill referring to it should say so and
 note that the tool names are the same under any server name.
 
+### 4.10 Private data
+
+A skill that drafts text bound for the remote — a commit message, a PR, an
+issue, a comment — carries the **Private data** block in its drafting step, and
+its confirmation gate (§4.3) re-reads the draft against it. Debugging sessions
+read logs, databases, and user files, and a draft written from that reading
+copies their names, IDs, and contents into a public artifact unless the skill
+stops it.
+
+These conventions are not deployed, so each skill must carry the block itself;
+keep its text identical across skills, so a change to it is made everywhere at
+once. The block defers to the consumer repository's own policy first, because
+only that repository knows which of its values are private (§4.5).
+
 ## 5. Authoring checklist
 
 Before considering a skill done, verify:
@@ -186,5 +200,7 @@ Before considering a skill done, verify:
       is guarded, the judgement is not duplicated per route, each route says
       which environment it is for, and a missing route fails loudly.
 - [ ] `allowed-tools` grants every MCP server the skill now uses (§4.1, §4.9).
+- [ ] A skill that drafts text bound for the remote carries the **Private
+      data** block unchanged, and its gate re-reads the draft against it (§4.10).
 - [ ] `apm audit` is clean and `apm install --dry-run --target claude` deploys it.
 - [ ] Verified by manual invocation in at least one consumer repository.
