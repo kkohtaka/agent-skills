@@ -32,6 +32,16 @@ In a cloud session the GitHub connector must be enabled for the session —
 without it, the three GitHub-facing skills have no route. See
 [CONVENTIONS.md §4.9](CONVENTIONS.md) for the authoring rule behind this.
 
+### Private data
+
+`commit`, `create-pr`, and `create-issue` check every draft for private data
+before it can reach the remote. They remove secrets, data read from running
+systems or user storage during the session, values kept out of version control,
+and personal data, and describe what that data showed by its shape instead. A
+consumer repository with its own definition of what is private documents it in
+`CLAUDE.md`, `AGENTS.md`, or `CONTRIBUTING.md`; the skills apply that policy
+first.
+
 ## Consuming
 
 Add the dependency to your repository's `apm.yml`:
